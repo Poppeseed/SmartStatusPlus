@@ -10,7 +10,7 @@ static Window *window;
 	
 #define TIME_LAYER_HEIGHT 50
 #define DATE_LAYER_HEIGHT 25
-#define ANIMATED_LAYER_HEIGHT 39
+#define ANIMATED_LAYER_HEIGHT 43
 #define MUSIC_LAYER_HEIGHT 47
 #define STATUS_LAYER_HEIGHT 13
 	
@@ -20,18 +20,20 @@ static Window *window;
 #define TIME_LAYER_Y -7
 #define DATE_LAYER_Y (TIME_LAYER_Y + TIME_LAYER_HEIGHT)
 #define ANIMATED_LAYER_Y (DATE_LAYER_Y + DATE_LAYER_HEIGHT)
-#define MUSIC_LAYER_Y (ANIMATED_LAYER_Y + ANIMATED_LAYER_HEIGHT)
+#define MUSIC_LAYER_Y (ANIMATED_LAYER_Y + ANIMATED_LAYER_HEIGHT - 4)
 #define STATUS_LAYER_Y (MUSIC_LAYER_Y + MUSIC_LAYER_HEIGHT)
 
+#define BATTERY_VAL_WIDTH 13
+#define BATTERY_VAL_HEIGHT 5
+#define BATTERY_VAL_WIDTH_F 13.0
+	
 typedef enum {WEATHER_LAYER, CALENDAR_LAYER, NUM_LAYERS} AnimatedLayers;
-
 
 static PropertyAnimation *ani_out, *ani_in;
 
-
 static TextLayer *text_weather_cond_layer, *text_weather_temp_layer;
 static TextLayer *text_date_layer, *text_time_layer;
-static TextLayer *text_mail_layer, *text_sms_layer, *text_phone_layer, *text_battery_layer;
+static TextLayer *text_mail_layer, *text_sms_layer, *text_phone_layer;//, *text_battery_layer;
 static TextLayer *calendar_date_layer, *calendar_text_layer;
 static TextLayer *music_artist_layer, *music_song_layer;
 
@@ -197,8 +199,8 @@ void rcv(DictionaryIterator *received, void *context) {
 		batteryPercent = t->value->uint8;
 		layer_mark_dirty(battery_layer);
 		
-		snprintf(string_buffer, sizeof(string_buffer), "%d", batteryPercent);
-		text_layer_set_text(text_battery_layer, string_buffer); 	
+		//snprintf(string_buffer, sizeof(string_buffer), "%d", batteryPercent);
+		//text_layer_set_text(text_battery_layer, string_buffer); 	
 	}
 
 
@@ -228,7 +230,7 @@ void rcv(DictionaryIterator *received, void *context) {
 	if (t!=NULL) {
 		memcpy(music_title_str, t->value->cstring, strlen(t->value->cstring));
 		  music_title_str[strlen(t->value->cstring)] = '\0';
-		text_layer_set_text(music_song_layer, music_title_str); 	
+		text_layer_set_text(music_song_layer, music_title_str);
 	}
 
 
@@ -237,14 +239,14 @@ void rcv(DictionaryIterator *received, void *context) {
 
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
 
-	ani_out = property_animation_create_layer_frame(animated_layer[active_layer], &GRect(0, ANIMATED_LAYER_Y, 144, 45), &GRect(-144, 70, 144, 45));
+	ani_out = property_animation_create_layer_frame(animated_layer[active_layer], &GRect(0, ANIMATED_LAYER_Y, 144, ANIMATED_LAYER_HEIGHT), &GRect(-144, ANIMATED_LAYER_Y, 144, ANIMATED_LAYER_HEIGHT));
 	animation_schedule((Animation*)ani_out);
 
 
 	active_layer = (active_layer + 1) % (NUM_LAYERS);
 
 
-	ani_in = property_animation_create_layer_frame(animated_layer[active_layer], &GRect(144, ANIMATED_LAYER_Y, 144, 45), &GRect(0, 70, 144, 45));
+	ani_in = property_animation_create_layer_frame(animated_layer[active_layer], &GRect(144, ANIMATED_LAYER_Y, 144, ANIMATED_LAYER_HEIGHT), &GRect(0, ANIMATED_LAYER_Y, 144, ANIMATED_LAYER_HEIGHT));
 	animation_schedule((Animation*)ani_in);
 
 }
@@ -305,7 +307,7 @@ void battery_layer_update_callback(Layer *me, GContext* ctx) {
 	graphics_context_set_stroke_color(ctx, GColorBlack);
 	graphics_context_set_fill_color(ctx, GColorWhite);
 
-	graphics_fill_rect(ctx, GRect(15-(int)((batteryPercent/100.0)*15.0), 0, 15, 7), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(BATTERY_VAL_WIDTH-(int)((batteryPercent/100.0)*BATTERY_VAL_WIDTH_F), 0, BATTERY_VAL_WIDTH, BATTERY_VAL_HEIGHT), 0, GCornerNone);
 	
 }
 
@@ -314,7 +316,7 @@ void pebble_battery_layer_update_callback(Layer *me, GContext* ctx) {
 	graphics_context_set_stroke_color(ctx, GColorBlack);
 	graphics_context_set_fill_color(ctx, GColorWhite);
 
-	graphics_fill_rect(ctx, GRect(15-(int)((batteryPblPercent/100.0)*15.0), 0, 15, 7), 0, GCornerNone);
+	graphics_fill_rect(ctx, GRect(BATTERY_VAL_WIDTH-(int)((batteryPblPercent/100.0)*BATTERY_VAL_WIDTH_F), 0, BATTERY_VAL_WIDTH, BATTERY_VAL_HEIGHT), 0, GCornerNone);
 	
 }
 
@@ -324,7 +326,7 @@ static void window_load(Window *window) {
 }
 
 static void window_unload(Window *window) {
-//  text_layer_destroy(text_layer);
+  //text_layer_destroy(text_layer);
 }
 
 static void window_appear(Window *window)
@@ -535,7 +537,7 @@ static void init(void) {
 
  
 	
-	pebble_battery_layer = layer_create(GRect(83, 4, 13, 5));
+	pebble_battery_layer = layer_create(GRect(83, 4, BATTERY_VAL_WIDTH, BATTERY_VAL_HEIGHT));
 	layer_set_update_proc(pebble_battery_layer, pebble_battery_layer_update_callback);
 	layer_add_child(status_layer, pebble_battery_layer);
 
@@ -543,20 +545,20 @@ static void init(void) {
 	batteryPblPercent = pbl_batt.charge_percent;
 	layer_mark_dirty(pebble_battery_layer);
 
-	battery_layer = layer_create(GRect(116, 4, 13, 5));
+	battery_layer = layer_create(GRect(116, 4, BATTERY_VAL_WIDTH, BATTERY_VAL_HEIGHT));
 	layer_set_update_proc(battery_layer, battery_layer_update_callback);
 	layer_add_child(status_layer, battery_layer);
 
 	batteryPercent = 100;
 	layer_mark_dirty(battery_layer);
 
-	text_battery_layer = text_layer_create(GRect(114, 30, 30, 21));
-	text_layer_set_text_alignment(text_battery_layer, GTextAlignmentLeft);
-	text_layer_set_text_color(text_battery_layer, GColorWhite);
-	text_layer_set_background_color(text_battery_layer, GColorClear);
-	text_layer_set_font(text_battery_layer,  fonts_get_system_font(FONT_KEY_GOTHIC_18));
-	layer_add_child(status_layer, text_layer_get_layer(text_battery_layer));
-	text_layer_set_text(text_battery_layer, "-");
+	//text_battery_layer = text_layer_create(GRect(114, 30, 30, 21));
+	//text_layer_set_text_alignment(text_battery_layer, GTextAlignmentLeft);
+	//text_layer_set_text_color(text_battery_layer, GColorWhite);
+	//text_layer_set_background_color(text_battery_layer, GColorClear);
+	//text_layer_set_font(text_battery_layer,  fonts_get_system_font(FONT_KEY_GOTHIC_18));
+	//layer_add_child(status_layer, text_layer_get_layer(text_battery_layer));
+	//text_layer_set_text(text_battery_layer, "-");
 	
 
 	if (bluetooth_connection_service_peek()) {
@@ -581,8 +583,6 @@ static void init(void) {
 
 static void deinit(void) {
 	
-
-	
 	animation_destroy((Animation*)ani_in);
 	animation_destroy((Animation*)ani_out);
 	
@@ -593,7 +593,7 @@ static void deinit(void) {
 	text_layer_destroy(text_mail_layer);
 	text_layer_destroy(text_sms_layer);
 	text_layer_destroy(text_phone_layer);
-	text_layer_destroy(text_battery_layer);
+	//text_layer_destroy(text_battery_layer);
 	text_layer_destroy(calendar_date_layer);
 	text_layer_destroy(calendar_text_layer);
 	text_layer_destroy(music_artist_layer);
@@ -602,6 +602,7 @@ static void deinit(void) {
 	layer_destroy(pebble_battery_layer);
 	bitmap_layer_destroy(background_image);
 	bitmap_layer_destroy(weather_image);
+	bitmap_layer_destroy(status_image);
 	layer_destroy(status_layer);
 	
 	
@@ -621,7 +622,7 @@ static void deinit(void) {
 	bluetooth_connection_service_unsubscribe();
 	battery_state_service_unsubscribe();
 	
-  window_destroy(window);
+	window_destroy(window);
 }
 
 int main(void) {
